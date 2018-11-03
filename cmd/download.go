@@ -70,11 +70,11 @@ func runDownload(cfg config.Config, flags *pflag.FlagSet, args []string) error {
 	}
 
 	params := downloadParams{
-		cfg:   &cfg,
-		uuid:  uuid,
-		slug:  slug,
-		track: track,
-		team:  team,
+		usrCfg: usrCfg,
+		uuid:   uuid,
+		slug:   slug,
+		track:  track,
+		team:   team,
 	}
 	payload, err := newDownloadPayload(params)
 	if err != nil {
