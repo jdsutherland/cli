@@ -115,7 +115,7 @@ func (d *downloadContext) writeSolutionFiles() error {
 	}
 	exercise := d.exercise()
 	for _, file := range d.payload.Solution.Files {
-		res, err := d.makeSolutionFileRequest(file)
+		res, err := d.submitRequest(file)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func (d *downloadContext) writeSolutionFiles() error {
 	return nil
 }
 
-func (d *downloadContext) makeSolutionFileRequest(file string) (*http.Response, error) {
+func (d *downloadContext) submitRequest(file string) (*http.Response, error) {
 	unparsedURL := fmt.Sprintf("%s%s", d.payload.Solution.FileDownloadBaseURL, file)
 	parsedURL, err := netURL.ParseRequestURI(unparsedURL)
 	if err != nil {
