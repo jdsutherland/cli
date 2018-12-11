@@ -103,6 +103,8 @@ func newDownloadContext(usrCfg *viper.Viper, flags *pflag.FlagSet) (*downloadCon
 	}, nil
 }
 
+// requestPayload makes an HTTP request decoding the response to populate the payload field.
+// This is the required entry point for working with downloadContext.
 func (d *downloadContext) requestPayload() error {
 	client, err := api.NewClient(d.usrCfg.GetString("token"), d.usrCfg.GetString("apibaseurl"))
 	if err != nil {
@@ -143,6 +145,9 @@ func (d *downloadContext) requestPayload() error {
 	return nil
 }
 
+// writeSolutionFiles writes each solution file in the payload.
+// An HTTP request is made for each file and failed responses are swallowed.
+// All successful file responses are written except where empty.
 func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error {
 	if err := d.validatePayload(); err != nil {
 		return err
