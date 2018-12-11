@@ -140,10 +140,6 @@ func (d *downloadContext) requestPayload() error {
 		}
 	}
 
-	if err := d.validatePayload(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
