@@ -114,7 +114,7 @@ func (d *downloadContext) requestPayload() error {
 		return err
 	}
 
-	if err := d.buildQuery(req.URL); err != nil {
+	if err = d.buildQuery(req.URL); err != nil {
 		return err
 	}
 	res, err := client.Do(req)
@@ -163,7 +163,7 @@ func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error 
 
 		relativePath := d.sanitizeLegacyFilepath(filename, exercise.Slug)
 		dir := filepath.Join(exercise.MetadataDir(), filepath.Dir(relativePath))
-		if err := os.MkdirAll(dir, os.FileMode(0755)); err != nil {
+		if err = os.MkdirAll(dir, os.FileMode(0755)); err != nil {
 			return err
 		}
 
