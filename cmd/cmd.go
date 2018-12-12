@@ -52,6 +52,21 @@ const msgMissingMetadata = `
 
 `
 
+// validateUserConfig validates the presense of required user config values
+func validateUserConfig(usrCfg *viper.Viper) error {
+	if usrCfg.GetString("token") == "" {
+		return fmt.Errorf(
+			msgWelcomePleaseConfigure,
+			config.SettingsURL(usrCfg.GetString("apibaseurl")),
+			BinaryName,
+		)
+	}
+	if usrCfg.GetString("workspace") == "" || usrCfg.GetString("apibaseurl") == "" {
+		return fmt.Errorf(msgRerunConfigure, BinaryName)
+	}
+	return nil
+}
+
 type downloadArgsError interface {
 	downloadArgsError() error
 }
