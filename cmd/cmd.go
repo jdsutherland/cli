@@ -52,6 +52,18 @@ const msgMissingMetadata = `
 
 `
 
+type downloadArgsError interface {
+	downloadArgsError() error
+}
+
+// validateDownloadArgs validates download args, returning implementation specific errors
+func validateDownloadArgs(err downloadArgsError, slug, uuid string) error {
+	if uuid != "" && slug != "" || uuid == slug {
+		return err.downloadArgsError()
+	}
+	return nil
+}
+
 // downloadContext represents the required context around obtaining a Solution
 // payload from the API and working with the its contents.
 type downloadContext struct {
@@ -71,6 +83,10 @@ func newDownloadContext(usrCfg *viper.Viper, downloadParams map[string]string) (
 		slug:   downloadParams["slug"],
 		track:  downloadParams["track"],
 		team:   downloadParams["team"],
+	}
+
+	if err := validateDownloadArgs(ctx, ctx.slug, ctx.uuid); err != nil {
+		return nil, err
 	}
 
 	return ctx, ctx.requestPayload()
@@ -299,6 +315,10 @@ func (d *downloadContext) sanitizeLegacyFilepath(file, slug string) string {
 func (d *downloadContext) printResult(exercise workspace.Exercise) {
 	fmt.Fprintf(Err, "\nDownloaded to\n")
 	fmt.Fprintf(Out, "%s\n", exercise.MetadataDir())
+}
+
+func (d *downloadContext) downloadArgsError() error {
+	return errors.New("need a 'slug' or a 'uuid'")
 }
 
 type downloadPayload struct {
