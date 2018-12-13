@@ -136,7 +136,7 @@ func (d *downloadContext) requestPayload() error {
 // An HTTP request is made for each file and failed responses are swallowed.
 // All successful file responses are written except where empty.
 func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error {
-	if err := d.validatePayload(); err != nil {
+	if err := d.payload.validate(); err != nil {
 		return err
 	}
 
@@ -172,7 +172,7 @@ func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error 
 }
 
 func (d *downloadContext) requestFile(filename string) (*http.Response, error) {
-	if err := d.validatePayload(); err != nil {
+	if err := d.payload.validate(); err != nil {
 		return nil, err
 	}
 	if filename == "" {
@@ -221,7 +221,7 @@ func (d *downloadContext) writeMetadata(exercise workspace.Exercise) error {
 }
 
 func (d *downloadContext) exercise() (workspace.Exercise, error) {
-	if err := d.validatePayload(); err != nil {
+	if err := d.payload.validate(); err != nil {
 		return workspace.Exercise{}, err
 	}
 
@@ -240,7 +240,7 @@ func (d *downloadContext) exercise() (workspace.Exercise, error) {
 }
 
 func (d *downloadContext) metadata() (workspace.ExerciseMetadata, error) {
-	if err := d.validatePayload(); err != nil {
+	if err := d.payload.validate(); err != nil {
 		return workspace.ExerciseMetadata{}, err
 	}
 
@@ -254,16 +254,6 @@ func (d *downloadContext) metadata() (workspace.ExerciseMetadata, error) {
 		Handle:      d.payload.Solution.User.Handle,
 		IsRequester: d.payload.Solution.User.IsRequester,
 	}, nil
-}
-
-func (d *downloadContext) validatePayload() error {
-	if d.payload == nil {
-		return errors.New("download payload is empty")
-	}
-	if d.payload.Error.Message != "" {
-		return errors.New(d.payload.Error.Message)
-	}
-	return nil
 }
 
 func (d *downloadContext) requestURL() string {
@@ -391,4 +381,14 @@ type downloadPayload struct {
 		Message          string   `json:"message"`
 		PossibleTrackIDs []string `json:"possible_track_ids"`
 	} `json:"error,omitempty"`
+}
+
+func (d *downloadPayload) validate() error {
+	if d == nil {
+		return errors.New("download payload is empty")
+	}
+	if d.Error.Message != "" {
+		return errors.New(d.Error.Message)
+	}
+	return nil
 }
