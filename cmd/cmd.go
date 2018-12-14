@@ -88,7 +88,7 @@ func newDownloadContext(usrCfg *viper.Viper, payload *downloadPayload) (*downloa
 // writeSolutionFiles attempts to write each solution file in the payload.
 // An HTTP request is made for each file and failed responses are swallowed.
 // All successful file responses are written except where empty.
-func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error {
+func (d downloadContext) writeSolutionFiles(exercise workspace.Exercise) error {
 	for _, filename := range d.payload.Solution.Files {
 		res, err := d.requestFile(filename)
 		if err != nil {
@@ -120,7 +120,7 @@ func (d *downloadContext) writeSolutionFiles(exercise workspace.Exercise) error 
 	return nil
 }
 
-func (d *downloadContext) requestFile(filename string) (*http.Response, error) {
+func (d downloadContext) requestFile(filename string) (*http.Response, error) {
 	if filename == "" {
 		return nil, errors.New("filename is empty")
 	}
@@ -154,7 +154,7 @@ func (d *downloadContext) requestFile(filename string) (*http.Response, error) {
 	return res, nil
 }
 
-func (d *downloadContext) writeMetadata(exercise workspace.Exercise) error {
+func (d downloadContext) writeMetadata(exercise workspace.Exercise) error {
 	metadata, err := d.metadata()
 	if err != nil {
 		return err
@@ -166,7 +166,7 @@ func (d *downloadContext) writeMetadata(exercise workspace.Exercise) error {
 	return nil
 }
 
-func (d *downloadContext) exercise() (workspace.Exercise, error) {
+func (d downloadContext) exercise() (workspace.Exercise, error) {
 	root := d.usrCfg.GetString("workspace")
 	if d.payload.Solution.Team.Slug != "" {
 		root = filepath.Join(root, "teams", d.payload.Solution.Team.Slug)
@@ -181,7 +181,7 @@ func (d *downloadContext) exercise() (workspace.Exercise, error) {
 	}, nil
 }
 
-func (d *downloadContext) metadata() (workspace.ExerciseMetadata, error) {
+func (d downloadContext) metadata() (workspace.ExerciseMetadata, error) {
 	return workspace.ExerciseMetadata{
 		AutoApprove: d.payload.Solution.Exercise.AutoApprove,
 		Track:       d.payload.Solution.Exercise.Track.ID,
@@ -197,7 +197,7 @@ func (d *downloadContext) metadata() (workspace.ExerciseMetadata, error) {
 // sanitizeLegacyFilepath is a workaround for a path bug due to an early design
 // decision (later reversed) to allow numeric suffixes for exercise directories,
 // allowing people to have multiple parallel versions of an exercise.
-func (d *downloadContext) sanitizeLegacyFilepath(file, slug string) string {
+func (d downloadContext) sanitizeLegacyFilepath(file, slug string) string {
 	pattern := fmt.Sprintf(`\A.*[/\\]%s-\d*/`, slug)
 	rgxNumericSuffix := regexp.MustCompile(pattern)
 	if rgxNumericSuffix.MatchString(file) {
