@@ -81,7 +81,8 @@ func newDownloadWriter(payload *downloadPayload) (*downloadWriter, error) {
 }
 
 func (d downloadWriter) writeMetadata() error {
-	return d.metadata().Write(d.exercise().MetadataDir())
+	metadata := d.metadata()
+	return metadata.Write(d.exercise().MetadataDir())
 }
 
 // writeSolutionFiles attempts to write each Solution file in the downloadPayload.
@@ -143,40 +144,40 @@ type downloadParams struct {
 	team   string
 }
 
-func newDownloadParamsFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (downloadParams, error) {
-	d := downloadParams{usrCfg: usrCfg, slug: exercise.Slug, track: exercise.Track}
+func newDownloadParamsFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (*downloadParams, error) {
+	d := &downloadParams{usrCfg: usrCfg, slug: exercise.Slug, track: exercise.Track}
 	return d, d.validate()
 }
 
-func newDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (downloadParams, error) {
+func newDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*downloadParams, error) {
 	var err error
-	d := downloadParams{usrCfg: usrCfg}
+	d := &downloadParams{usrCfg: usrCfg}
 
 	d.uuid, err = flags.GetString("uuid")
 	if err != nil {
-		return downloadParams{}, err
+		return nil, err
 	}
 	d.slug, err = flags.GetString("exercise")
 	if err != nil {
-		return downloadParams{}, err
+		return nil, err
 	}
 
 	if err = d.validate(); err != nil {
-		return downloadParams{}, errors.New("need an --exercise name or a solution --uuid")
+		return nil, errors.New("need an --exercise name or a solution --uuid")
 	}
 
 	d.track, err = flags.GetString("track")
 	if err != nil {
-		return downloadParams{}, err
+		return nil, err
 	}
 	d.team, err = flags.GetString("team")
 	if err != nil {
-		return downloadParams{}, err
+		return nil, err
 	}
 	return d, err
 }
 
-func (d downloadParams) validate() error {
+func (d *downloadParams) validate() error {
 	if d.slug != "" && d.uuid != "" || d.uuid == d.slug {
 		return errors.New("need a 'slug' or a 'uuid'")
 	}
@@ -184,7 +185,7 @@ func (d downloadParams) validate() error {
 }
 
 type downloadPayload struct {
-	downloadParams
+	*downloadParams
 	Solution struct {
 		ID   string `json:"id"`
 		URL  string `json:"url"`
@@ -219,7 +220,7 @@ type downloadPayload struct {
 }
 
 // newDownloadPayload creates a payload by making an HTTP request to the API.
-func newDownloadPayload(params downloadParams) (*downloadPayload, error) {
+func newDownloadPayload(params *downloadParams) (*downloadPayload, error) {
 	if err := params.validate(); err != nil {
 		return nil, err
 	}
@@ -260,7 +261,7 @@ func newDownloadPayload(params downloadParams) (*downloadPayload, error) {
 	return d, nil
 }
 
-func (d downloadPayload) requestURL() string {
+func (d *downloadPayload) requestURL() string {
 	id := "latest"
 	if d.uuid != "" {
 		id = d.uuid
@@ -268,7 +269,7 @@ func (d downloadPayload) requestURL() string {
 	return fmt.Sprintf("%s/solutions/%s", d.usrCfg.GetString("apibaseurl"), id)
 }
 
-func (d downloadPayload) buildQuery(url *netURL.URL) {
+func (d *downloadPayload) buildQuery(url *netURL.URL) {
 	query := url.Query()
 	if d.uuid == "" {
 		query.Add("exercise_id", d.slug)
@@ -284,7 +285,7 @@ func (d downloadPayload) buildQuery(url *netURL.URL) {
 
 // requestFile requests a Solution file from the API, returning an HTTP response.
 // Non 200 responses and zero length file responses are swallowed, returning nil.
-func (d downloadPayload) requestFile(filename string) (*http.Response, error) {
+func (d *downloadPayload) requestFile(filename string) (*http.Response, error) {
 	if filename == "" {
 		return nil, errors.New("filename is empty")
 	}
@@ -317,7 +318,7 @@ func (d downloadPayload) requestFile(filename string) (*http.Response, error) {
 	return res, nil
 }
 
-func (d downloadPayload) exercise() workspace.Exercise {
+func (d *downloadPayload) exercise() workspace.Exercise {
 	root := d.usrCfg.GetString("workspace")
 	if d.Solution.Team.Slug != "" {
 		root = filepath.Join(root, "teams", d.Solution.Team.Slug)
@@ -332,7 +333,7 @@ func (d downloadPayload) exercise() workspace.Exercise {
 	}
 }
 
-func (d downloadPayload) metadata() workspace.ExerciseMetadata {
+func (d *downloadPayload) metadata() workspace.ExerciseMetadata {
 	return workspace.ExerciseMetadata{
 		AutoApprove: d.Solution.Exercise.AutoApprove,
 		Track:       d.Solution.Exercise.Track.ID,
@@ -345,7 +346,7 @@ func (d downloadPayload) metadata() workspace.ExerciseMetadata {
 	}
 }
 
-func (d downloadPayload) validate() error {
+func (d *downloadPayload) validate() error {
 	if d.Solution.ID == "" {
 		return errors.New("download payload is empty")
 	}
