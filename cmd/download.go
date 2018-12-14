@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/exercism/cli/config"
+	"github.com/exercism/cli/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -47,11 +48,11 @@ func runDownload(cfg config.Config, flags *pflag.FlagSet, args []string) error {
 		return err
 	}
 
-	if err = ctx.writeSolutionFiles(); err != nil {
+	if err = ctx.WriteSolutionFiles(); err != nil {
 		return err
 	}
 
-	if err := ctx.writeMetadata(); err != nil {
+	if err := ctx.WriteMetadata(); err != nil {
 		return err
 	}
 
@@ -63,23 +64,23 @@ func runDownload(cfg config.Config, flags *pflag.FlagSet, args []string) error {
 type downloadCmdContext struct {
 	usrCfg *viper.Viper
 	flags  *pflag.FlagSet
-	*downloadWriter
+	*service.DownloadWriter
 }
 
 // newDownloadCmdContext creates new downloadCmdContext,
 // providing a download ready for work.
 func newDownloadCmdContext(usrCfg *viper.Viper, flags *pflag.FlagSet) (*downloadCmdContext, error) {
-	params, err := newDownloadParamsFromFlags(usrCfg, flags)
+	params, err := service.NewDownloadParamsFromFlags(usrCfg, flags)
 	if err != nil {
 		return nil, err
 	}
 
-	download, err := newDownload(params)
+	download, err := service.NewDownload(params)
 	if err != nil {
 		return nil, err
 	}
 
-	writer, err := newDownloadWriter(download)
+	writer, err := service.NewDownloadWriter(download)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +88,13 @@ func newDownloadCmdContext(usrCfg *viper.Viper, flags *pflag.FlagSet) (*download
 	return &downloadCmdContext{
 		usrCfg:         usrCfg,
 		flags:          flags,
-		downloadWriter: writer,
+		DownloadWriter: writer,
 	}, nil
 }
 
 func (d *downloadCmdContext) printResult() {
 	fmt.Fprintf(Err, "\nDownloaded to\n")
-	fmt.Fprintf(Out, "%s\n", d.exercise().MetadataDir())
+	fmt.Fprintf(Out, "%s\n", d.Exercise().MetadataDir())
 }
 
 func setupDownloadFlags(flags *pflag.FlagSet) {
