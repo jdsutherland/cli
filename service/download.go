@@ -105,6 +105,10 @@ func NewDownloadParamsFromExercise(usrCfg *viper.Viper, exercise workspace.Exerc
 
 // NewDownloadParamsFromFlags creates a new DownloadParams from flags.
 func NewDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*DownloadParams, error) {
+	if flags == nil {
+		return nil, errors.New("flags is empty")
+	}
+
 	var err error
 	d := &DownloadParams{usrCfg: usrCfg}
 
