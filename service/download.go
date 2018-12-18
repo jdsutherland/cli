@@ -19,9 +19,14 @@ import (
 	"github.com/spf13/viper"
 )
 
+type fileWriter interface {
+	Write(dir string) error
+}
+
 // DownloadWriter writes metadata and Solution files from a Download to disk.
 type DownloadWriter struct {
 	*Download
+	fileWriter
 }
 
 // NewDownloadWriter creates a new DownloadWriter from a Download.
@@ -29,13 +34,15 @@ func NewDownloadWriter(download *Download) (*DownloadWriter, error) {
 	if err := download.validate(); err != nil {
 		return nil, err
 	}
-	return &DownloadWriter{download}, nil
+	return &DownloadWriter{Download: download}, nil
 }
 
 // WriteMetadata writes metadata from the download.
 func (d DownloadWriter) WriteMetadata() error {
-	metadata := d.metadata()
-	return metadata.Write(d.Exercise().MetadataDir())
+	if d.fileWriter == nil {
+		d.fileWriter = d.metadata()
+	}
+	return d.fileWriter.Write(d.Exercise().MetadataDir())
 }
 
 // WriteSolutionFiles attempts to write each Solution file in the Download.
@@ -280,8 +287,8 @@ func (d *Download) Exercise() workspace.Exercise {
 	}
 }
 
-func (d *Download) metadata() workspace.ExerciseMetadata {
-	return workspace.ExerciseMetadata{
+func (d *Download) metadata() *workspace.ExerciseMetadata {
+	return &workspace.ExerciseMetadata{
 		AutoApprove: d.Solution.Exercise.AutoApprove,
 		Track:       d.Solution.Exercise.Track.ID,
 		Team:        d.Solution.Team.Slug,

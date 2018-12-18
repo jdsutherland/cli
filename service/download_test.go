@@ -16,6 +16,10 @@ import (
 
 const _workspace = "/home/username"
 const apibaseurl = "http://example.com"
+const handle = "alice"
+const team = "bogus-team"
+const track = "bogus-track"
+const slug = "bogus-exercise"
 
 func newFakeConfig() *viper.Viper {
 	v := viper.New()
@@ -290,9 +294,6 @@ func TestDownload(t *testing.T) {
 }
 
 func TestDownload_Exercise(t *testing.T) {
-	const handle = "alice"
-	const team = "bogus-team"
-
 	t.Run("team, is requestor", func(t *testing.T) {
 		dl, err := newFakeDownload(downloadPayloadTmpl)
 		assert.NoError(t, err)
@@ -303,8 +304,8 @@ func TestDownload_Exercise(t *testing.T) {
 
 		want := workspace.Exercise{
 			Root:  filepath.Join(_workspace, "teams", team),
-			Track: "bogus-track",
-			Slug:  "bogus-exercise",
+			Track: track,
+			Slug:  slug,
 		}
 
 		if got != want {
@@ -322,8 +323,8 @@ func TestDownload_Exercise(t *testing.T) {
 
 		want := workspace.Exercise{
 			Root:  _workspace,
-			Track: "bogus-track",
-			Slug:  "bogus-exercise",
+			Track: track,
+			Slug:  slug,
 		}
 
 		if got != want {
@@ -341,8 +342,8 @@ func TestDownload_Exercise(t *testing.T) {
 
 		want := workspace.Exercise{
 			Root:  filepath.Join(_workspace, "users", handle),
-			Track: "bogus-track",
-			Slug:  "bogus-exercise",
+			Track: track,
+			Slug:  slug,
 		}
 
 		if got != want {
@@ -360,8 +361,8 @@ func TestDownload_Exercise(t *testing.T) {
 
 		want := workspace.Exercise{
 			Root:  filepath.Join(_workspace, "teams", team, "users", handle),
-			Track: "bogus-track",
-			Slug:  "bogus-exercise",
+			Track: track,
+			Slug:  slug,
 		}
 
 		if got != want {
@@ -376,6 +377,30 @@ func newFakeDownload(template string) (*Download, error) {
 		return nil, err
 	}
 	return d, nil
+}
+
+type mockWriter struct{ called bool }
+
+func (m *mockWriter) Write(dir string) error {
+	m.called = true
+	return nil
+}
+
+func TestDownloadWriter(t *testing.T) {
+	t.Run("WriteMetadata delegates Write", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		mock := &mockWriter{}
+		writer := &DownloadWriter{Download: dl, fileWriter: mock}
+
+		err = writer.WriteMetadata()
+		assert.NoError(t, err)
+
+		if !mock.called {
+			t.Error("expected Write to be called")
+		}
+	})
 }
 
 const downloadPayloadTmpl = `
