@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/exercism/cli/workspace"
@@ -201,23 +202,23 @@ func fakeDownloadServer() *httptest.Server {
 	server := httptest.NewServer(mux)
 
 	mux.HandleFunc("/valid/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, downloadPayloadTemplate)
+		fmt.Fprintf(w, downloadPayloadTmpl)
 	})
 
 	mux.HandleFunc("/unauth/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintf(w, errorTemplate)
+		fmt.Fprintf(w, errorTmpl)
 	})
 
 	mux.HandleFunc("/non200/", func(w http.ResponseWriter, r *http.Request) {
 		// use 400 to fulfill a non 200 response
 		w.WriteHeader(400)
-		fmt.Fprintf(w, errorTemplate)
+		fmt.Fprintf(w, errorTmpl)
 	})
 
 	mux.HandleFunc("/errors/", func(w http.ResponseWriter, r *http.Request) {
 		// use 400 to fulfill a non 200 response
-		fmt.Fprintf(w, errorTemplate)
+		fmt.Fprintf(w, errorTmpl)
 	})
 
 	return server
@@ -288,18 +289,96 @@ func TestDownload(t *testing.T) {
 	})
 }
 
-type fakeDownloadPayload struct {
-	payload *downloadPayload
+func TestDownload_Exercise(t *testing.T) {
+	const handle = "alice"
+	const team = "bogus-team"
+
+	t.Run("team, is requestor", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		dl.Solution.Team.Slug = team
+		dl.Solution.User.IsRequester = true
+		got := dl.Exercise()
+
+		want := workspace.Exercise{
+			Root:  filepath.Join(_workspace, "teams", team),
+			Track: "bogus-track",
+			Slug:  "bogus-exercise",
+		}
+
+		if got != want {
+			t.Errorf("got '%s', want '%s'", got, want)
+		}
+	})
+
+	t.Run("no team, is requestor", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		dl.Solution.Team.Slug = ""
+		dl.Solution.User.IsRequester = true
+		got := dl.Exercise()
+
+		want := workspace.Exercise{
+			Root:  _workspace,
+			Track: "bogus-track",
+			Slug:  "bogus-exercise",
+		}
+
+		if got != want {
+			t.Errorf("got '%s', want '%s'", got, want)
+		}
+	})
+
+	t.Run("no team, not requestor", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		dl.Solution.Team.Slug = ""
+		dl.Solution.User.IsRequester = false
+		got := dl.Exercise()
+
+		want := workspace.Exercise{
+			Root:  filepath.Join(_workspace, "users", handle),
+			Track: "bogus-track",
+			Slug:  "bogus-exercise",
+		}
+
+		if got != want {
+			t.Errorf("got '%s', want '%s'", got, want)
+		}
+	})
+
+	t.Run("team, not requestor", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		dl.Solution.Team.Slug = team
+		dl.Solution.User.IsRequester = false
+		got := dl.Exercise()
+
+		want := workspace.Exercise{
+			Root:  filepath.Join(_workspace, "teams", team, "users", handle),
+			Track: "bogus-track",
+			Slug:  "bogus-exercise",
+		}
+
+		if got != want {
+			t.Errorf("got '%s', want '%s'", got, want)
+		}
+	})
 }
 
-func (m *fakeDownloadPayload) newPayload(template string) error {
-	if err := json.Unmarshal([]byte(template), &m.payload); err != nil {
-		return err
+func newFakeDownload(template string) (*Download, error) {
+	d := &Download{DownloadParams: newFakeDownloadParams()}
+	if err := json.Unmarshal([]byte(template), &d.downloadPayload); err != nil {
+		return nil, err
 	}
-	return nil
+	return d, nil
 }
 
-const downloadPayloadTemplate = `
+const downloadPayloadTmpl = `
 {
 	"solution": {
 		"id": "bogus-id",
@@ -319,7 +398,7 @@ const downloadPayloadTemplate = `
 				"language": "Bogus Language"
 			}
 		},
-		"file_download_base_url": "",
+		"file_download_base_url": "bogus-base-url",
 		"files": [
 			"file-1.txt",
 			"subdir/file-2.txt",
@@ -337,7 +416,7 @@ const downloadPayloadTemplate = `
 }
 `
 
-const errorTemplate = `
+const errorTmpl = `
 {
   "error": {
 	"type": "bogus",
