@@ -13,11 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const _workspace = "/home/username"
+const apibaseurl = "http://example.com"
+
 func newFakeConfig() *viper.Viper {
 	v := viper.New()
 	v.Set("token", "abc123")
-	v.Set("workspace", "/home/username")
-	v.Set("apibaseurl", "http://example.com")
+	v.Set("workspace", _workspace)
+	v.Set("apibaseurl", apibaseurl)
 	return v
 }
 
@@ -197,60 +200,91 @@ func fakeDownloadServer() *httptest.Server {
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	mux.HandleFunc("/valid", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, payloadTemplate)
+	mux.HandleFunc("/valid/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, downloadPayloadTemplate)
 	})
 
-	mux.HandleFunc("/unauth", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/unauth/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Fprintf(w, errorTemplate)
 	})
 
-	mux.HandleFunc("/errors", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
-		fmt.Fprintf(w, payloadTemplateErrorMessage)
+	mux.HandleFunc("/non200/", func(w http.ResponseWriter, r *http.Request) {
+		// use 400 to fulfill a non 200 response
+		w.WriteHeader(400)
+		fmt.Fprintf(w, errorTemplate)
+	})
+
+	mux.HandleFunc("/errors/", func(w http.ResponseWriter, r *http.Request) {
+		// use 400 to fulfill a non 200 response
+		fmt.Fprintf(w, errorTemplate)
 	})
 
 	return server
 }
 
-func TestDownloadMetadata(t *testing.T) {
+func setFakeServerRoute(usrCfg *viper.Viper, tsURL, route string) {
+	testServerURL := fmt.Sprintf("%s/%s", tsURL, route)
+	usrCfg.Set("apibaseurl", testServerURL)
+}
+
+func TestDownload(t *testing.T) {
 	t.Run("creates successfully when valid", func(t *testing.T) {
 		ts := fakeDownloadServer()
 		defer ts.Close()
 
 		params := newFakeDownloadParams()
-		params.usrCfg.Set("apibaseurl", fmt.Sprint(ts.URL, "/valid"))
-		a := fmt.Sprint(ts.URL, "/valid")
-		fmt.Printf("\ta: \n%+v\n", a)
-		f := params.usrCfg.GetString("apibaseurl")
-		fmt.Printf("\tf: \n%+v\n", f)
+		setFakeServerRoute(params.usrCfg, ts.URL, "valid")
 
 		_, err := NewDownload(params)
 		assert.NoError(t, err)
-
 	})
 
-	// t.Run("unauth response", func(t *testing.T) {
-	// 	ts := fakeDownloadServer()
-	// 	defer ts.Close()
-
-	// 	params := newFakeDownloadParams()
-	// 	params.usrCfg.Set("apibaseurl", ts.URL)
-
-	// 	_, err := NewDownload(params)
-	// 	assert.NoError(t, err)
-	// })
-
-	t.Run("validates", func(t *testing.T) {
-
+	t.Run("401 response", func(t *testing.T) {
 		ts := fakeDownloadServer()
 		defer ts.Close()
 
 		params := newFakeDownloadParams()
-		params.usrCfg.Set("apibaseurl", ts.URL)
+		setFakeServerRoute(params.usrCfg, ts.URL, "unauth")
 
-		_, err := NewDownload(nil)
+		_, err := NewDownload(params)
 		assert.Error(t, err)
+	})
+
+	t.Run("non 200 response", func(t *testing.T) {
+		ts := fakeDownloadServer()
+		defer ts.Close()
+
+		params := newFakeDownloadParams()
+		setFakeServerRoute(params.usrCfg, ts.URL, "non200")
+
+		_, err := NewDownload(params)
+
+		if assert.Error(t, err) {
+			assert.Equal(t, err.Error(), "error-msg")
+		}
+	})
+
+	t.Run("validates", func(t *testing.T) {
+		ts := fakeDownloadServer()
+		defer ts.Close()
+
+		params := newFakeDownloadParams()
+		setFakeServerRoute(params.usrCfg, ts.URL, "errors")
+
+		dl, err := NewDownload(params)
+		assert.NoError(t, err)
+
+		err = dl.validate()
+		if assert.Error(t, err) {
+			assert.Equal(t, err.Error(), "Download is empty")
+		}
+
+		dl.Solution.ID = "1"
+		err = dl.validate()
+		if assert.Error(t, err) {
+			assert.Equal(t, err.Error(), "error-msg")
+		}
 	})
 }
 
@@ -265,52 +299,7 @@ func (m *fakeDownloadPayload) newPayload(template string) error {
 	return nil
 }
 
-const payloadTemplateErrorMessage = `
-{
-  "error": {
-	"type": "bogus",
-	"message": "we are error",
-	"possible_track_ids": []
-  }
-}
-`
-
-const payloadTemplateSolutionEmpty = `
-{
-	"solution": {
-		"id": "",
-		"user": {
-			"handle": "alice",
-			"is_requester": %s
-		},
-		"team": %s,
-		"exercise": {
-			"id": "bogus-exercise",
-			"instructions_url": "http://example.com/bogus-exercise",
-			"auto_approve": false,
-			"track": {
-				"id": "bogus-track",
-				"language": "Bogus Language"
-			}
-		},
-		"file_download_base_url": "%s",
-		"files": [
-			"file-1.txt",
-			"subdir/file-2.txt",
-			"special-char-filename#.txt",
-			"/with-leading-slash.txt",
-			"\\with-leading-backslash.txt",
-			"\\with\\backslashes\\in\\path.txt",
-			"file-3.txt",
-			"/full/path/with/numeric-suffix/bogus-track/bogus-exercise-12345/subdir/numeric.txt"
-		],
-		"iteration": {
-			"submitted_at": "2017-08-21t10:11:12.130z"
-		}
-	}
-}
-`
-const payloadTemplate = `
+const downloadPayloadTemplate = `
 {
 	"solution": {
 		"id": "bogus-id",
@@ -345,5 +334,15 @@ const payloadTemplate = `
 			"submitted_at": "2017-08-21t10:11:12.130z"
 		}
 	}
+}
+`
+
+const errorTemplate = `
+{
+  "error": {
+	"type": "bogus",
+	"message": "error-msg",
+	"possible_track_ids": []
+  }
 }
 `
