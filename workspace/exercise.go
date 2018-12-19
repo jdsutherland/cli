@@ -11,6 +11,7 @@ type Exercise struct {
 	Root  string
 	Track string
 	Slug  string
+	Documents []Document
 }
 
 // NewExerciseFromDir constructs an exercise given the exercise directory.

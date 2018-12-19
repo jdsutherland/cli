@@ -308,9 +308,7 @@ func TestDownload_Exercise(t *testing.T) {
 			Slug:  slug,
 		}
 
-		if got != want {
-			t.Errorf("got '%s', want '%s'", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 
 	t.Run("no team, is requestor", func(t *testing.T) {
@@ -327,9 +325,7 @@ func TestDownload_Exercise(t *testing.T) {
 			Slug:  slug,
 		}
 
-		if got != want {
-			t.Errorf("got '%s', want '%s'", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 
 	t.Run("no team, not requestor", func(t *testing.T) {
@@ -346,9 +342,7 @@ func TestDownload_Exercise(t *testing.T) {
 			Slug:  slug,
 		}
 
-		if got != want {
-			t.Errorf("got '%s', want '%s'", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 
 	t.Run("team, not requestor", func(t *testing.T) {
@@ -365,9 +359,7 @@ func TestDownload_Exercise(t *testing.T) {
 			Slug:  slug,
 		}
 
-		if got != want {
-			t.Errorf("got '%s', want '%s'", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
