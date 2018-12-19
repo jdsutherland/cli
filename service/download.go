@@ -20,13 +20,18 @@ import (
 )
 
 type fileWriter interface {
-	Write(dir string) error
+	Write(f string) error
+}
+
+type downloader interface {
+	requestFile(f string) (*http.Response, error)
 }
 
 // DownloadWriter writes metadata and Solution files from a Download to disk.
 type DownloadWriter struct {
 	*Download
 	fileWriter
+	downloader
 }
 
 // NewDownloadWriter creates a new DownloadWriter from a Download.
@@ -38,7 +43,7 @@ func NewDownloadWriter(download *Download) (*DownloadWriter, error) {
 }
 
 // WriteMetadata writes metadata from the download.
-func (d DownloadWriter) WriteMetadata() error {
+func (d *DownloadWriter) WriteMetadata() error {
 	if d.fileWriter == nil {
 		d.fileWriter = d.metadata()
 	}
@@ -48,9 +53,12 @@ func (d DownloadWriter) WriteMetadata() error {
 // WriteSolutionFiles attempts to write each Solution file in the Download.
 // An HTTP request is made for each file and failed responses are swallowed.
 // All successful file responses are written except where empty.
-func (d DownloadWriter) WriteSolutionFiles() error {
+func (d *DownloadWriter) WriteSolutionFiles() error {
+	if d.downloader == nil {
+		d.downloader = d.Download
+	}
 	for _, filename := range d.Solution.Files {
-		res, err := d.requestFile(filename)
+		res, err := d.downloader.requestFile(filename)
 		if err != nil {
 			return err
 		}

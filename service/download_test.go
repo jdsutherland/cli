@@ -1,10 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -29,31 +32,12 @@ func newFakeConfig() *viper.Viper {
 	return v
 }
 
-type paramFlags struct {
-	uuid     string
-	exercise string
-	track    string
-	team     string
-}
-
-func (d *paramFlags) populateValid() {
-	d.exercise = "bogus-exercise"
-	d.track = "bogus-track"
-	d.team = "bogus-team"
-}
-
-func newParamFlags() paramFlags {
-	params := paramFlags{}
-	params.populateValid()
-	return params
-}
-
-func newFakeFlags(params paramFlags) *pflag.FlagSet {
+func newFakeFlags() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("fake", pflag.PanicOnError)
-	flags.String("uuid", params.uuid, "")
-	flags.String("track", params.track, "")
-	flags.String("exercise", params.exercise, "")
-	flags.String("team", params.team, "")
+	flags.String("uuid", "", "")
+	flags.String("exercise", "bogus-exercise", "")
+	flags.String("track", "bogus-track", "")
+	flags.String("team", "bogus-team", "")
 	return flags
 }
 
@@ -136,7 +120,7 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 func TestNewDownloadParamFromFlags(t *testing.T) {
 	t.Run("creates successfully when valid", func(t *testing.T) {
 		cfg := newFakeConfig()
-		flags := newFakeFlags(newParamFlags())
+		flags := newFakeFlags()
 
 		got, err := NewDownloadParamsFromFlags(cfg, flags)
 		assert.NoError(t, err)
@@ -156,7 +140,7 @@ func TestNewDownloadParamFromFlags(t *testing.T) {
 
 	t.Run("validates flags", func(t *testing.T) {
 		cfg := newFakeConfig()
-		flags := newFakeFlags(newParamFlags())
+		flags := newFakeFlags()
 
 		_, err := NewDownloadParamsFromFlags(cfg, nil)
 		assert.Error(t, err)
@@ -177,7 +161,7 @@ func TestNewDownloadParamFromFlags(t *testing.T) {
 	t.Run("validates user config", func(t *testing.T) {
 		var err error
 		cfg := newFakeConfig()
-		flags := newFakeFlags(newParamFlags())
+		flags := newFakeFlags()
 
 		_, err = NewDownloadParamsFromFlags(nil, flags)
 		assert.Error(t, err)
@@ -221,7 +205,6 @@ func fakeDownloadServer() *httptest.Server {
 	})
 
 	mux.HandleFunc("/errors/", func(w http.ResponseWriter, r *http.Request) {
-		// use 400 to fulfill a non 200 response
 		fmt.Fprintf(w, errorTmpl)
 	})
 
@@ -378,8 +361,8 @@ func (m *mockWriter) Write(dir string) error {
 	return nil
 }
 
-func TestDownloadWriter(t *testing.T) {
-	t.Run("WriteMetadata delegates Write", func(t *testing.T) {
+func TestWriteMetadata(t *testing.T) {
+	t.Run("delegates Write", func(t *testing.T) {
 		dl, err := newFakeDownload(downloadPayloadTmpl)
 		assert.NoError(t, err)
 
@@ -393,6 +376,95 @@ func TestDownloadWriter(t *testing.T) {
 			t.Error("expected Write to be called")
 		}
 	})
+}
+
+type stubDownloader struct{}
+
+// stubs requestFile, returning a resp body containing the given filename.
+func (m stubDownloader) requestFile(filename string) (*http.Response, error) {
+	// shouldn't write empty files
+	if filename == "empty" {
+		return nil, nil
+	}
+	return &http.Response{
+		Body: ioutil.NopCloser(bytes.NewBufferString(filename)),
+	}, nil
+}
+
+func TestWriteSolutionFiles(t *testing.T) {
+	t.Run("requests payload Solution files and saves", func(t *testing.T) {
+		dl, err := newFakeDownload(downloadPayloadTmpl)
+		assert.NoError(t, err)
+
+		tmpDir, err := ioutil.TempDir("", "download-service")
+		defer os.RemoveAll(tmpDir)
+		assert.NoError(t, err)
+		dl.usrCfg.Set("workspace", tmpDir)
+
+		writer := &DownloadWriter{Download: dl, downloader: &stubDownloader{}}
+
+		err = writer.WriteSolutionFiles()
+		assert.NoError(t, err)
+
+		targetDir := filepath.Join(tmpDir, "teams", "bogus-team-slug", "users", handle)
+		assertDownloadedCorrectFiles(t, targetDir)
+	})
+}
+
+func assertDownloadedCorrectFiles(t *testing.T, targetDir string) {
+	expectedFiles := []struct {
+		desc     string
+		path     string
+		contents string
+	}{
+		{
+			desc:     "a file in the exercise root directory",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "file-1.txt"),
+			contents: "file-1.txt",
+		},
+		{
+			desc:     "a file in a subdirectory",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "subdir", "file-2.txt"),
+			contents: "subdir/file-2.txt",
+		},
+		{
+			desc:     "a path with a numeric suffix",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "subdir", "numeric.txt"),
+			contents: "/full/path/with/numeric-suffix/bogus-track/bogus-exercise-12345/subdir/numeric.txt",
+		},
+		{
+			desc:     "a file that requires URL encoding",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "special-char-filename#.txt"),
+			contents: "special-char-filename#.txt",
+		},
+		{
+			desc:     "a file that has a leading slash",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with-leading-slash.txt"),
+			contents: "/with-leading-slash.txt",
+		},
+		{
+			desc:     "a file with a leading backslash",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with-leading-backslash.txt"),
+			contents: "\\with-leading-backslash.txt",
+		},
+		{
+			desc:     "a file with backslashes in path",
+			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with", "backslashes", "in", "path.txt"),
+			contents: "\\with\\backslashes\\in\\path.txt",
+		},
+	}
+
+	for _, file := range expectedFiles {
+		t.Run(file.desc, func(t *testing.T) {
+			b, err := ioutil.ReadFile(file.path)
+			assert.NoError(t, err)
+			assert.Equal(t, file.contents, string(b))
+		})
+	}
+
+	path := filepath.Join(targetDir, "bogus-track", "bogus-exercise", "empty")
+	_, err := os.Lstat(path)
+	assert.True(t, os.IsNotExist(err), "It should not write the file if empty.")
 }
 
 const downloadPayloadTmpl = `
@@ -424,7 +496,8 @@ const downloadPayloadTmpl = `
 			"\\with-leading-backslash.txt",
 			"\\with\\backslashes\\in\\path.txt",
 			"file-3.txt",
-			"/full/path/with/numeric-suffix/bogus-track/bogus-exercise-12345/subdir/numeric.txt"
+			"/full/path/with/numeric-suffix/bogus-track/bogus-exercise-12345/subdir/numeric.txt",
+			"empty"
 		],
 		"iteration": {
 			"submitted_at": "2017-08-21t10:11:12.130z"
