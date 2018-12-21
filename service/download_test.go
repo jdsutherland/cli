@@ -41,9 +41,8 @@ func newFakeFlags() *pflag.FlagSet {
 }
 
 func newFakeDownloadParams() *DownloadParams {
-	cfg := newFakeConfig()
 	return &DownloadParams{
-		usrCfg: cfg,
+		usrCfg: newFakeConfig(),
 		slug:   slug,
 		track:  track,
 		team:   team,
@@ -52,17 +51,16 @@ func newFakeDownloadParams() *DownloadParams {
 
 func TestNewDownloadParamFromExercise(t *testing.T) {
 	t.Run("creates succesfully when valid", func(t *testing.T) {
-		cfg := newFakeConfig()
 		exercise := workspace.Exercise{
 			Slug:  slug,
 			Track: track,
 		}
 
-		got, err := NewDownloadParamsFromExercise(cfg, exercise)
+		got, err := NewDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.NoError(t, err)
 
 		want := &DownloadParams{
-			usrCfg: cfg,
+			usrCfg: newFakeConfig(),
 			slug:   slug,
 			track:  track,
 		}
@@ -73,17 +71,16 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 	})
 
 	t.Run("validates exercise", func(t *testing.T) {
-		cfg := newFakeConfig()
 		exercise := workspace.Exercise{
 			Slug:  slug,
 			Track: track,
 		}
 
-		_, err := NewDownloadParamsFromExercise(cfg, exercise)
+		_, err := NewDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.NoError(t, err)
 
 		exercise.Slug = ""
-		_, err = NewDownloadParamsFromExercise(cfg, exercise)
+		_, err = NewDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.Error(t, err)
 	})
 
@@ -118,14 +115,11 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 
 func TestNewDownloadParamFromFlags(t *testing.T) {
 	t.Run("creates successfully when valid", func(t *testing.T) {
-		cfg := newFakeConfig()
-		flags := newFakeFlags()
-
-		got, err := NewDownloadParamsFromFlags(cfg, flags)
+		got, err := NewDownloadParamsFromFlags(newFakeConfig(), newFakeFlags())
 		assert.NoError(t, err)
 
 		want := &DownloadParams{
-			usrCfg: cfg,
+			usrCfg: newFakeConfig(),
 			slug:   "bogus-exercise",
 			track:  "bogus-track",
 			team:   "bogus-team",
@@ -138,48 +132,46 @@ func TestNewDownloadParamFromFlags(t *testing.T) {
 	})
 
 	t.Run("validates flags", func(t *testing.T) {
-		cfg := newFakeConfig()
 		flags := newFakeFlags()
 
-		_, err := NewDownloadParamsFromFlags(cfg, nil)
+		_, err := NewDownloadParamsFromFlags(newFakeConfig(), nil)
 		assert.Error(t, err)
 
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.NoError(t, err)
 
 		// requires either exercise or uuid
 		flags.Set("exercise", "")
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.Error(t, err)
 
 		flags.Set("uuid", "bogus-uuid")
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.NoError(t, err)
 	})
 
 	t.Run("validates user config", func(t *testing.T) {
 		var err error
 		cfg := newFakeConfig()
-		flags := newFakeFlags()
 
-		_, err = NewDownloadParamsFromFlags(nil, flags)
+		_, err = NewDownloadParamsFromFlags(nil, newFakeFlags())
 		assert.Error(t, err)
 
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.NoError(t, err)
 
 		cfg.Set("token", "")
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("workspace", "")
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("apibaseurl", "")
-		_, err = NewDownloadParamsFromFlags(cfg, flags)
+		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 	})
 }
