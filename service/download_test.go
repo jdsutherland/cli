@@ -276,74 +276,59 @@ func TestDownload(t *testing.T) {
 	})
 }
 
-func TestDownload_Exercise(t *testing.T) {
-	t.Run("team, is requestor", func(t *testing.T) {
-		dl, err := newFakeDownload(downloadPayloadTmpl)
-		assert.NoError(t, err)
+func TestExercise(t *testing.T) {
+	var tests = []struct {
+		name        string
+		team        string
+		isRequestor bool
+		expected    workspace.Exercise
+	}{
+		{
+			"team, is requestor", team, true,
+			workspace.Exercise{
+				Root:  filepath.Join(_workspace, "teams", team),
+				Track: track,
+				Slug:  slug,
+			},
+		},
+		{
+			"no team, is requestor", "", true,
+			workspace.Exercise{
+				Root:  filepath.Join(_workspace),
+				Track: track,
+				Slug:  slug,
+			},
+		},
+		{
+			"no team, not requestor", "", false,
+			workspace.Exercise{
+				Root:  filepath.Join(_workspace, "users", handle),
+				Track: track,
+				Slug:  slug,
+			},
+		},
+		{
+			"team, not requestor", team, false,
+			workspace.Exercise{
+				Root:  filepath.Join(_workspace, "teams", team, "users", handle),
+				Track: track,
+				Slug:  slug,
+			},
+		},
+	}
 
-		dl.Solution.Team.Slug = team
-		dl.Solution.User.IsRequester = true
-		got := dl.Exercise()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dl, err := newFakeDownload(downloadPayloadTmpl)
+			assert.NoError(t, err)
 
-		want := workspace.Exercise{
-			Root:  filepath.Join(_workspace, "teams", team),
-			Track: track,
-			Slug:  slug,
-		}
+			dl.Solution.Team.Slug = tt.team
+			dl.Solution.User.IsRequester = tt.isRequestor
+			given := dl.Exercise()
 
-		assert.Equal(t, got, want)
-	})
-
-	t.Run("no team, is requestor", func(t *testing.T) {
-		dl, err := newFakeDownload(downloadPayloadTmpl)
-		assert.NoError(t, err)
-
-		dl.Solution.Team.Slug = ""
-		dl.Solution.User.IsRequester = true
-		got := dl.Exercise()
-
-		want := workspace.Exercise{
-			Root:  _workspace,
-			Track: track,
-			Slug:  slug,
-		}
-
-		assert.Equal(t, got, want)
-	})
-
-	t.Run("no team, not requestor", func(t *testing.T) {
-		dl, err := newFakeDownload(downloadPayloadTmpl)
-		assert.NoError(t, err)
-
-		dl.Solution.Team.Slug = ""
-		dl.Solution.User.IsRequester = false
-		got := dl.Exercise()
-
-		want := workspace.Exercise{
-			Root:  filepath.Join(_workspace, "users", handle),
-			Track: track,
-			Slug:  slug,
-		}
-
-		assert.Equal(t, got, want)
-	})
-
-	t.Run("team, not requestor", func(t *testing.T) {
-		dl, err := newFakeDownload(downloadPayloadTmpl)
-		assert.NoError(t, err)
-
-		dl.Solution.Team.Slug = team
-		dl.Solution.User.IsRequester = false
-		got := dl.Exercise()
-
-		want := workspace.Exercise{
-			Root:  filepath.Join(_workspace, "teams", team, "users", handle),
-			Track: track,
-			Slug:  slug,
-		}
-
-		assert.Equal(t, got, want)
-	})
+			assert.Equal(t, given, tt.expected)
+		})
+	}
 }
 
 func newFakeDownload(template string) (*Download, error) {
