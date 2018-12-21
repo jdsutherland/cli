@@ -18,26 +18,25 @@ import (
 )
 
 const _workspace = "/home/username"
-const apibaseurl = "http://example.com"
 const handle = "alice"
+const slug = "bogus-exercise"
 const team = "bogus-team"
 const track = "bogus-track"
-const slug = "bogus-exercise"
 
 func newFakeConfig() *viper.Viper {
 	v := viper.New()
 	v.Set("token", "abc123")
 	v.Set("workspace", _workspace)
-	v.Set("apibaseurl", apibaseurl)
+	v.Set("apibaseurl", "http://example.com")
 	return v
 }
 
 func newFakeFlags() *pflag.FlagSet {
 	flags := pflag.NewFlagSet("fake", pflag.PanicOnError)
 	flags.String("uuid", "", "")
-	flags.String("exercise", "bogus-exercise", "")
-	flags.String("track", "bogus-track", "")
-	flags.String("team", "bogus-team", "")
+	flags.String("exercise", slug, "")
+	flags.String("track", track, "")
+	flags.String("team", team, "")
 	return flags
 }
 
@@ -45,9 +44,9 @@ func newFakeDownloadParams() *DownloadParams {
 	cfg := newFakeConfig()
 	return &DownloadParams{
 		usrCfg: cfg,
-		slug:   "bogus-exercise",
-		track:  "bogus-track",
-		team:   "bogus-team",
+		slug:   slug,
+		track:  track,
+		team:   team,
 	}
 }
 
@@ -55,8 +54,8 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 	t.Run("creates succesfully when valid", func(t *testing.T) {
 		cfg := newFakeConfig()
 		exercise := workspace.Exercise{
-			Slug:  "bogus-exercise",
-			Track: "bogus-track",
+			Slug:  slug,
+			Track: track,
 		}
 
 		got, err := NewDownloadParamsFromExercise(cfg, exercise)
@@ -64,8 +63,8 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 
 		want := &DownloadParams{
 			usrCfg: cfg,
-			slug:   "bogus-exercise",
-			track:  "bogus-track",
+			slug:   slug,
+			track:  track,
 		}
 
 		assert.Equal(t, got.usrCfg, want.usrCfg)
@@ -76,8 +75,8 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 	t.Run("validates exercise", func(t *testing.T) {
 		cfg := newFakeConfig()
 		exercise := workspace.Exercise{
-			Slug:  "bogus-exercise",
-			Track: "bogus-track",
+			Slug:  slug,
+			Track: track,
 		}
 
 		_, err := NewDownloadParamsFromExercise(cfg, exercise)
@@ -91,8 +90,8 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 	t.Run("validates user config", func(t *testing.T) {
 		cfg := newFakeConfig()
 		exercise := workspace.Exercise{
-			Slug:  "bogus-exercise",
-			Track: "bogus-track",
+			Slug:  slug,
+			Track: track,
 		}
 
 		_, err := NewDownloadParamsFromExercise(nil, exercise)
@@ -404,37 +403,37 @@ func assertDownloadedCorrectFiles(t *testing.T, targetDir string) {
 	}{
 		{
 			desc:     "a file in the exercise root directory",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "file-1.txt"),
+			path:     filepath.Join(targetDir, track, slug, "file-1.txt"),
 			contents: "file-1.txt",
 		},
 		{
 			desc:     "a file in a subdirectory",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "subdir", "file-2.txt"),
+			path:     filepath.Join(targetDir, track, slug, "subdir", "file-2.txt"),
 			contents: "subdir/file-2.txt",
 		},
 		{
 			desc:     "a path with a numeric suffix",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "subdir", "numeric.txt"),
+			path:     filepath.Join(targetDir, track, slug, "subdir", "numeric.txt"),
 			contents: "/full/path/with/numeric-suffix/bogus-track/bogus-exercise-12345/subdir/numeric.txt",
 		},
 		{
 			desc:     "a file that requires URL encoding",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "special-char-filename#.txt"),
+			path:     filepath.Join(targetDir, track, slug, "special-char-filename#.txt"),
 			contents: "special-char-filename#.txt",
 		},
 		{
 			desc:     "a file that has a leading slash",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with-leading-slash.txt"),
+			path:     filepath.Join(targetDir, track, slug, "with-leading-slash.txt"),
 			contents: "/with-leading-slash.txt",
 		},
 		{
 			desc:     "a file with a leading backslash",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with-leading-backslash.txt"),
+			path:     filepath.Join(targetDir, track, slug, "with-leading-backslash.txt"),
 			contents: "\\with-leading-backslash.txt",
 		},
 		{
 			desc:     "a file with backslashes in path",
-			path:     filepath.Join(targetDir, "bogus-track", "bogus-exercise", "with", "backslashes", "in", "path.txt"),
+			path:     filepath.Join(targetDir, track, slug, "with", "backslashes", "in", "path.txt"),
 			contents: "\\with\\backslashes\\in\\path.txt",
 		},
 	}
@@ -447,7 +446,7 @@ func assertDownloadedCorrectFiles(t *testing.T, targetDir string) {
 		})
 	}
 
-	path := filepath.Join(targetDir, "bogus-track", "bogus-exercise", "empty")
+	path := filepath.Join(targetDir, track, slug, "empty")
 	_, err := os.Lstat(path)
 	assert.True(t, os.IsNotExist(err), "It should not write the file if empty.")
 }
