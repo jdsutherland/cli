@@ -91,6 +91,23 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 			Track: track,
 		}
 
+		var tests = []struct {
+			desc     string
+			expected string
+			given    string
+		}{
+			{"errors on nil cfg", "", ""},
+		}
+		for _, tt := range tests {
+			tt := tt
+			t.Run(tt.desc, func(t *testing.T) {
+				actual := (tt.given)
+				if actual != tt.expected {
+					t.Errorf("(%s): expected %s, actual %s", tt.given, tt.expected, actual)
+				}
+
+			})
+		}
 		_, err := NewDownloadParamsFromExercise(nil, exercise)
 		assert.Error(t, err)
 
@@ -269,7 +286,7 @@ func TestDownload(t *testing.T) {
 
 func TestExercise(t *testing.T) {
 	var tests = []struct {
-		name        string
+		desc        string
 		team        string
 		isRequestor bool
 		expected    workspace.Exercise
@@ -309,7 +326,7 @@ func TestExercise(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.desc, func(t *testing.T) {
 			dl, err := newFakeDownload(downloadPayloadTmpl)
 			assert.NoError(t, err)
 
@@ -388,6 +405,8 @@ func TestWriteSolutionFiles(t *testing.T) {
 }
 
 func assertDownloadedCorrectFiles(t *testing.T, targetDir string) {
+	t.Helper()
+
 	expectedFiles := []struct {
 		desc     string
 		path     string
