@@ -64,7 +64,7 @@ func runDownload(cfg config.Config, flags *pflag.FlagSet, args []string) error {
 type downloadCmdContext struct {
 	usrCfg *viper.Viper
 	flags  *pflag.FlagSet
-	*service.DownloadWriter
+	*service.Download
 }
 
 // newDownloadCmdContext creates new downloadCmdContext,
@@ -80,15 +80,10 @@ func newDownloadCmdContext(usrCfg *viper.Viper, flags *pflag.FlagSet) (*download
 		return nil, err
 	}
 
-	writer, err := service.NewDownloadWriter(download)
-	if err != nil {
-		return nil, err
-	}
-
 	return &downloadCmdContext{
-		usrCfg:         usrCfg,
-		flags:          flags,
-		DownloadWriter: writer,
+		usrCfg:   usrCfg,
+		flags:    flags,
+		Download: download,
 	}, nil
 }
 

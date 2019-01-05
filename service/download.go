@@ -34,14 +34,6 @@ type DownloadWriter struct {
 	downloader
 }
 
-// NewDownloadWriter creates a new DownloadWriter from a Download.
-func NewDownloadWriter(download *Download) (*DownloadWriter, error) {
-	if err := download.validate(); err != nil {
-		return nil, err
-	}
-	return &DownloadWriter{Download: download}, nil
-}
-
 // WriteMetadata writes metadata from the download.
 func (d *DownloadWriter) WriteMetadata() error {
 	if d.fileWriter == nil {
@@ -178,6 +170,7 @@ func (d *DownloadParams) validate() error {
 type Download struct {
 	*DownloadParams
 	*downloadPayload
+	*DownloadWriter
 }
 
 // NewDownload creates a Download, getting a downloadPayload from the Exercism API.
@@ -186,6 +179,7 @@ func NewDownload(params *DownloadParams) (*Download, error) {
 		return nil, err
 	}
 	d := &Download{DownloadParams: params}
+	d.DownloadWriter = &DownloadWriter{Download: d}
 
 	client, err := api.NewClient(d.usrCfg.GetString("token"), d.usrCfg.GetString("apibaseurl"))
 	if err != nil {
