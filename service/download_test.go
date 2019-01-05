@@ -40,8 +40,8 @@ func newFakeFlags() *pflag.FlagSet {
 	return flags
 }
 
-func newFakeDownloadParams() *DownloadParams {
-	return &DownloadParams{
+func newFakeDownloadParams() *downloadParams {
+	return &downloadParams{
 		usrCfg: newFakeConfig(),
 		slug:   slug,
 		track:  track,
@@ -56,10 +56,10 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 			Track: track,
 		}
 
-		got, err := NewDownloadParamsFromExercise(newFakeConfig(), exercise)
+		got, err := newDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.NoError(t, err)
 
-		want := &DownloadParams{
+		want := &downloadParams{
 			usrCfg: newFakeConfig(),
 			slug:   slug,
 			track:  track,
@@ -76,11 +76,11 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 			Track: track,
 		}
 
-		_, err := NewDownloadParamsFromExercise(newFakeConfig(), exercise)
+		_, err := newDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.NoError(t, err)
 
 		exercise.Slug = ""
-		_, err = NewDownloadParamsFromExercise(newFakeConfig(), exercise)
+		_, err = newDownloadParamsFromExercise(newFakeConfig(), exercise)
 		assert.Error(t, err)
 	})
 
@@ -108,34 +108,34 @@ func TestNewDownloadParamFromExercise(t *testing.T) {
 
 			})
 		}
-		_, err := NewDownloadParamsFromExercise(nil, exercise)
+		_, err := newDownloadParamsFromExercise(nil, exercise)
 		assert.Error(t, err)
 
-		_, err = NewDownloadParamsFromExercise(cfg, exercise)
+		_, err = newDownloadParamsFromExercise(cfg, exercise)
 		assert.NoError(t, err)
 
 		cfg.Set("token", "")
-		_, err = NewDownloadParamsFromExercise(cfg, exercise)
+		_, err = newDownloadParamsFromExercise(cfg, exercise)
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("workspace", "")
-		_, err = NewDownloadParamsFromExercise(cfg, exercise)
+		_, err = newDownloadParamsFromExercise(cfg, exercise)
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("apibaseurl", "")
-		_, err = NewDownloadParamsFromExercise(cfg, exercise)
+		_, err = newDownloadParamsFromExercise(cfg, exercise)
 		assert.Error(t, err)
 	})
 }
 
 func TestNewDownloadParamFromFlags(t *testing.T) {
 	t.Run("creates successfully when valid", func(t *testing.T) {
-		got, err := NewDownloadParamsFromFlags(newFakeConfig(), newFakeFlags())
+		got, err := newDownloadParamsFromFlags(newFakeConfig(), newFakeFlags())
 		assert.NoError(t, err)
 
-		want := &DownloadParams{
+		want := &downloadParams{
 			usrCfg: newFakeConfig(),
 			slug:   "bogus-exercise",
 			track:  "bogus-track",
@@ -151,19 +151,19 @@ func TestNewDownloadParamFromFlags(t *testing.T) {
 	t.Run("validates flags", func(t *testing.T) {
 		flags := newFakeFlags()
 
-		_, err := NewDownloadParamsFromFlags(newFakeConfig(), nil)
+		_, err := newDownloadParamsFromFlags(newFakeConfig(), nil)
 		assert.Error(t, err)
 
-		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
+		_, err = newDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.NoError(t, err)
 
 		// requires either exercise or uuid
 		flags.Set("exercise", "")
-		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
+		_, err = newDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.Error(t, err)
 
 		flags.Set("uuid", "bogus-uuid")
-		_, err = NewDownloadParamsFromFlags(newFakeConfig(), flags)
+		_, err = newDownloadParamsFromFlags(newFakeConfig(), flags)
 		assert.NoError(t, err)
 	})
 
@@ -171,24 +171,24 @@ func TestNewDownloadParamFromFlags(t *testing.T) {
 		var err error
 		cfg := newFakeConfig()
 
-		_, err = NewDownloadParamsFromFlags(nil, newFakeFlags())
+		_, err = newDownloadParamsFromFlags(nil, newFakeFlags())
 		assert.Error(t, err)
 
-		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
+		_, err = newDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.NoError(t, err)
 
 		cfg.Set("token", "")
-		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
+		_, err = newDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("workspace", "")
-		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
+		_, err = newDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 
 		cfg = newFakeConfig()
 		cfg.Set("apibaseurl", "")
-		_, err = NewDownloadParamsFromFlags(cfg, newFakeFlags())
+		_, err = newDownloadParamsFromFlags(cfg, newFakeFlags())
 		assert.Error(t, err)
 	})
 }
@@ -340,7 +340,7 @@ func TestExercise(t *testing.T) {
 }
 
 func newFakeDownload(template string) (*Download, error) {
-	d := &Download{DownloadParams: newFakeDownloadParams()}
+	d := &Download{downloadParams: newFakeDownloadParams()}
 	if err := json.Unmarshal([]byte(template), &d.downloadPayload); err != nil {
 		return nil, err
 	}

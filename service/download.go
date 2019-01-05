@@ -95,8 +95,8 @@ func (d DownloadWriter) sanitizeLegacyFilepath(file, slug string) string {
 	return filepath.FromSlash(file)
 }
 
-// DownloadParams is required to create a Download.
-type DownloadParams struct {
+// downloadParams is required to create a Download.
+type downloadParams struct {
 	usrCfg *viper.Viper
 	uuid   string
 	slug   string
@@ -104,20 +104,20 @@ type DownloadParams struct {
 	team   string
 }
 
-// NewDownloadParamsFromExercise creates a new DownloadParams from an Exercise.
-func NewDownloadParamsFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (*DownloadParams, error) {
-	d := &DownloadParams{usrCfg: usrCfg, slug: exercise.Slug, track: exercise.Track}
+// newDownloadParamsFromExercise creates a new downloadParams from an Exercise.
+func newDownloadParamsFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (*downloadParams, error) {
+	d := &downloadParams{usrCfg: usrCfg, slug: exercise.Slug, track: exercise.Track}
 	return d, d.validate()
 }
 
-// NewDownloadParamsFromFlags creates a new DownloadParams from flags.
-func NewDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*DownloadParams, error) {
+// newDownloadParamsFromFlags creates a new downloadParams from flags.
+func newDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*downloadParams, error) {
 	if flags == nil {
 		return nil, errors.New("flags is empty")
 	}
 
 	var err error
-	d := &DownloadParams{usrCfg: usrCfg}
+	d := &downloadParams{usrCfg: usrCfg}
 
 	d.uuid, err = flags.GetString("uuid")
 	if err != nil {
@@ -143,9 +143,9 @@ func NewDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*Dow
 	return d, err
 }
 
-func (d *DownloadParams) validate() error {
+func (d *downloadParams) validate() error {
 	if d == nil {
-		return errors.New("DownloadParams is empty")
+		return errors.New("downloadParams is empty")
 	}
 	if d.slug != "" && d.uuid != "" || d.uuid == d.slug {
 		return errors.New("need a 'slug' or a 'uuid'")
@@ -168,17 +168,33 @@ func (d *DownloadParams) validate() error {
 
 // Download represents a Download from the Exercism API.
 type Download struct {
-	*DownloadParams
+	*downloadParams
 	*downloadPayload
 	*DownloadWriter
 }
 
+func NewDownloadFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (*Download, error) {
+	downloadParams, err := newDownloadParamsFromExercise(usrCfg, exercise)
+	if err != nil {
+		return nil, err
+	}
+	return NewDownload(downloadParams)
+}
+
+func NewDownloadFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*Download, error) {
+	downloadParams, err := newDownloadParamsFromFlags(usrCfg, flags)
+	if err != nil {
+		return nil, err
+	}
+	return NewDownload(downloadParams)
+}
+
 // NewDownload creates a Download, getting a downloadPayload from the Exercism API.
-func NewDownload(params *DownloadParams) (*Download, error) {
+func NewDownload(params *downloadParams) (*Download, error) {
 	if err := params.validate(); err != nil {
 		return nil, err
 	}
-	d := &Download{DownloadParams: params}
+	d := &Download{downloadParams: params}
 	d.DownloadWriter = &DownloadWriter{Download: d}
 
 	client, err := api.NewClient(d.usrCfg.GetString("token"), d.usrCfg.GetString("apibaseurl"))
@@ -314,7 +330,7 @@ func (d *Download) validate() error {
 
 // downloadPayload is an Exercism API response.
 type downloadPayload struct {
-	*DownloadParams
+	*downloadParams
 	Solution struct {
 		ID   string `json:"id"`
 		URL  string `json:"url"`
