@@ -360,7 +360,7 @@ func TestWriteMetadata(t *testing.T) {
 		assert.NoError(t, err)
 
 		mock := &mockWriter{}
-		writer := &DownloadWriter{Download: dl, fileWriter: mock}
+		writer := &downloadWriter{Download: dl, fileWriter: mock}
 
 		err = writer.WriteMetadata()
 		assert.NoError(t, err)
@@ -394,7 +394,7 @@ func TestWriteSolutionFiles(t *testing.T) {
 		assert.NoError(t, err)
 		dl.usrCfg.Set("workspace", tmpDir)
 
-		writer := &DownloadWriter{Download: dl, downloader: &stubDownloader{}}
+		writer := &downloadWriter{Download: dl, downloader: &stubDownloader{}}
 
 		err = writer.WriteSolutionFiles()
 		assert.NoError(t, err)

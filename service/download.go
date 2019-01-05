@@ -27,15 +27,15 @@ type downloader interface {
 	requestFile(f string) (*http.Response, error)
 }
 
-// DownloadWriter writes metadata and Solution files from a Download to disk.
-type DownloadWriter struct {
+// downloadWriter writes metadata and Solution files from a Download to disk.
+type downloadWriter struct {
 	*Download
 	fileWriter
 	downloader
 }
 
 // WriteMetadata writes metadata from the download.
-func (d *DownloadWriter) WriteMetadata() error {
+func (d *downloadWriter) WriteMetadata() error {
 	if d.fileWriter == nil {
 		d.fileWriter = d.metadata()
 	}
@@ -45,7 +45,7 @@ func (d *DownloadWriter) WriteMetadata() error {
 // WriteSolutionFiles attempts to write each Solution file in the Download.
 // An HTTP request is made for each file and failed responses are swallowed.
 // All successful file responses are written except where empty.
-func (d *DownloadWriter) WriteSolutionFiles() error {
+func (d *downloadWriter) WriteSolutionFiles() error {
 	if d.downloader == nil {
 		d.downloader = d.Download
 	}
@@ -83,7 +83,7 @@ func (d *DownloadWriter) WriteSolutionFiles() error {
 // sanitizeLegacyFilepath is a workaround for a path bug due to an early design
 // decision (later reversed) to allow numeric suffixes for exercise directories,
 // allowing people to have multiple parallel versions of an exercise.
-func (d DownloadWriter) sanitizeLegacyFilepath(file, slug string) string {
+func (d downloadWriter) sanitizeLegacyFilepath(file, slug string) string {
 	pattern := fmt.Sprintf(`\A.*[/\\]%s-\d*/`, slug)
 	rgxNumericSuffix := regexp.MustCompile(pattern)
 	if rgxNumericSuffix.MatchString(file) {
@@ -170,7 +170,7 @@ func (d *downloadParams) validate() error {
 type Download struct {
 	*downloadParams
 	*downloadPayload
-	*DownloadWriter
+	*downloadWriter
 }
 
 func NewDownloadFromExercise(usrCfg *viper.Viper, exercise workspace.Exercise) (*Download, error) {
@@ -195,7 +195,7 @@ func NewDownload(params *downloadParams) (*Download, error) {
 		return nil, err
 	}
 	d := &Download{downloadParams: params}
-	d.DownloadWriter = &DownloadWriter{Download: d}
+	d.downloadWriter = &downloadWriter{Download: d}
 
 	client, err := api.NewClient(d.usrCfg.GetString("token"), d.usrCfg.GetString("apibaseurl"))
 	if err != nil {
