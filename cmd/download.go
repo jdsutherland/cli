@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/exercism/cli/config"
+	"github.com/exercism/cli/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -42,21 +43,21 @@ func runDownload(cfg config.Config, flags *pflag.FlagSet, args []string) error {
 		return err
 	}
 
-	download, err := newDownloadFromFlags(cfg.UserViperConfig, flags)
+	download, err := service.NewDownloadFromFlags(cfg.UserViperConfig, flags)
 	if err != nil {
 		return err
 	}
 
-	if err = download.writeSolutionFiles(); err != nil {
+	if err = download.WriteSolutionFiles(); err != nil {
 		return err
 	}
 
-	if err := download.writeMetadata(); err != nil {
+	if err := download.WriteMetadata(); err != nil {
 		return err
 	}
 
 	fmt.Fprintf(Err, "\nDownloaded to\n")
-	fmt.Fprintf(Out, "%s\n", download.exercise().MetadataDir())
+	fmt.Fprintf(Out, "%s\n", download.Destination())
 	return nil
 }
 
