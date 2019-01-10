@@ -195,17 +195,17 @@ type fileRequester interface {
 // downloadWriter writes contents from Download.
 type downloadWriter struct {
 	*Download
-	fileWriter
-	fileRequester
+	writer    fileWriter
+	requester fileRequester
 }
 
 // WriteMetadata writes the exercise metadata.
 func (d downloadWriter) WriteMetadata() error {
-	if d.fileWriter == nil {
+	if d.writer == nil {
 		metadata := d.metadata()
-		d.fileWriter = &metadata
+		d.writer = &metadata
 	}
-	return d.fileWriter.Write(d.Destination())
+	return d.writer.Write(d.Destination())
 }
 
 // WriteSolutionFiles attempts to write each exercise file that is part of the downloaded Solution.
@@ -215,11 +215,11 @@ func (d downloadWriter) WriteSolutionFiles() error {
 	if d.fromExercise {
 		return errors.New("existing exercise files should not be overwritten")
 	}
-	if d.fileRequester == nil {
-		d.fileRequester = d.Download
+	if d.requester == nil {
+		d.requester = d.Download
 	}
 	for _, filename := range d.Solution.Files {
-		res, err := d.fileRequester.requestFile(filename)
+		res, err := d.requester.requestFile(filename)
 		if err != nil {
 			return err
 		}
