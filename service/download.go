@@ -26,18 +26,21 @@ type Download struct {
 	*downloadWriter
 }
 
-// NewDownloadFromExercise is a convenience wrapper for creating a new Download.
-func NewDownloadFromExercise(usrCfg *viper.Viper, exercise ws.Exercise) (*Download, error) {
-	downloadParams, err := newDownloadParamsFromExercise(usrCfg, exercise)
+// NewDownloadFromFlags initiates a Download from flags.
+// This is the primary interaction for downloading from the Exercism API.
+func NewDownloadFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*Download, error) {
+	downloadParams, err := newDownloadParamsFromFlags(usrCfg, flags)
 	if err != nil {
 		return nil, err
 	}
 	return newDownload(downloadParams)
 }
 
-// NewDownloadFromFlags is a convenience wrapper for creating a new Download.
-func NewDownloadFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*Download, error) {
-	downloadParams, err := newDownloadParamsFromFlags(usrCfg, flags)
+// NewDownloadFromExercise initiates a Download from an exercise.
+// This is used to get metadata and isn't the primary interaction for downloading.
+// Only allows writing metadata, not exercise files.
+func NewDownloadFromExercise(usrCfg *viper.Viper, exercise ws.Exercise) (*Download, error) {
+	downloadParams, err := newDownloadParamsFromExercise(usrCfg, exercise)
 	if err != nil {
 		return nil, err
 	}
@@ -209,6 +212,9 @@ func (d downloadWriter) WriteMetadata() error {
 // An HTTP request is made using each filename and failed responses are swallowed.
 // All successful file responses are written except when 0 Content-Length.
 func (d downloadWriter) WriteSolutionFiles() error {
+	if d.fromExercise {
+		return errors.New("existing exercise files should not be overwritten")
+	}
 	if d.fileRequester == nil {
 		d.fileRequester = d.Download
 	}
@@ -250,17 +256,14 @@ func (d *downloadWriter) Destination() string {
 
 // downloadParams is required to create a Download.
 type downloadParams struct {
-	usrCfg    *viper.Viper
-	uuid      string
-	slug      string
-	track     string
-	team      string
-	fromFlags bool
-}
+	usrCfg *viper.Viper
+	uuid   string
+	slug   string
+	track  string
+	team   string
 
-func newDownloadParamsFromExercise(usrCfg *viper.Viper, exercise ws.Exercise) (*downloadParams, error) {
-	d := &downloadParams{usrCfg: usrCfg, slug: exercise.Slug, track: exercise.Track}
-	return d, d.validate()
+	fromFlags    bool
+	fromExercise bool
 }
 
 func newDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*downloadParams, error) {
@@ -281,6 +284,16 @@ func newDownloadParamsFromFlags(usrCfg *viper.Viper, flags *pflag.FlagSet) (*dow
 	d.team, err = flags.GetString("team")
 	if err != nil {
 		return nil, err
+	}
+	return d, d.validate()
+}
+
+func newDownloadParamsFromExercise(usrCfg *viper.Viper, exercise ws.Exercise) (*downloadParams, error) {
+	d := &downloadParams{
+		usrCfg:       usrCfg,
+		slug:         exercise.Slug,
+		track:        exercise.Track,
+		fromExercise: true,
 	}
 	return d, d.validate()
 }

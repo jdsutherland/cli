@@ -94,21 +94,38 @@ func (m stubRequester) requestFile(filename string) (*http.Response, error) {
 }
 
 func TestWriteSolutionFiles(t *testing.T) {
-	f := newFixture()
-	dl, err := f.download()
-	assert.NoError(t, err)
+	t.Run("error when called from download initiated via exercise", func(t *testing.T) {
+		f := newFixture()
+		params := f.downloadParams()
+		params.fromExercise = true
 
-	tmpDir, err := ioutil.TempDir("", "download-service")
-	defer os.RemoveAll(tmpDir)
-	assert.NoError(t, err)
-	dl.usrCfg.Set("workspace", tmpDir)
+		dl, err := f.download()
+		assert.NoError(t, err)
+		dl.downloadParams = params
 
-	writer := &downloadWriter{Download: dl, fileRequester: &stubRequester{}}
+		err = dl.WriteSolutionFiles()
+		if assert.Error(t, err) {
+			assert.Contains(t, err.Error(), "should not be overwritten")
+		}
+	})
 
-	err = writer.WriteSolutionFiles()
-	assert.NoError(t, err)
+	t.Run("succesfully writes files", func(t *testing.T) {
+		f := newFixture()
+		dl, err := f.download()
+		assert.NoError(t, err)
 
-	assertDownloadedCorrectFiles(t, f.payloadTmplDir(tmpDir))
+		tmpDir, err := ioutil.TempDir("", "download-service")
+		defer os.RemoveAll(tmpDir)
+		assert.NoError(t, err)
+		dl.usrCfg.Set("workspace", tmpDir)
+
+		writer := &downloadWriter{Download: dl, fileRequester: &stubRequester{}}
+
+		err = writer.WriteSolutionFiles()
+		assert.NoError(t, err)
+
+		assertDownloadedCorrectFiles(t, f.payloadTmplDir(tmpDir))
+	})
 }
 
 // paths match files in payloadTmpl.
