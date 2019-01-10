@@ -70,7 +70,7 @@ func TestWriteMetadata(t *testing.T) {
 	assert.NoError(t, err)
 
 	mock := &mockWriter{}
-	writer := &downloadWriter{Download: dl, writer: mock}
+	writer := &downloadWriter{Download: dl, metadataWriter: mock}
 
 	err = writer.WriteMetadata()
 	assert.NoError(t, err)
@@ -468,10 +468,10 @@ func (f *fixture) downloadParams() *downloadParams {
 // download creates a new Download by unmarshaling the fixture template.
 func (f *fixture) download() (*Download, error) {
 	d := &Download{downloadParams: f.downloadParams()}
-	d.downloadWriter = &downloadWriter{Download: d}
 	if err := json.Unmarshal([]byte(f.payloadTmpl()), &d.downloadPayload); err != nil {
 		return nil, err
 	}
+	d.downloadWriter = newDownloadWriter(d)
 	return d, nil
 }
 

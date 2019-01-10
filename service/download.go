@@ -53,7 +53,6 @@ func newDownload(params *downloadParams) (*Download, error) {
 		return nil, err
 	}
 	d := &Download{downloadParams: params}
-	d.downloadWriter = &downloadWriter{Download: d}
 
 	client, err := api.NewClient(d.usrCfg.GetString("token"), d.usrCfg.GetString("apibaseurl"))
 	if err != nil {
@@ -87,6 +86,7 @@ func newDownload(params *downloadParams) (*Download, error) {
 			return nil, errors.New(d.Error.Message)
 		}
 	}
+	d.downloadWriter = newDownloadWriter(d)
 	return d, d.validate()
 }
 
@@ -195,17 +195,22 @@ type fileRequester interface {
 // downloadWriter writes contents from Download.
 type downloadWriter struct {
 	*Download
-	writer    fileWriter
-	requester fileRequester
+	metadataWriter fileWriter
+	requester      fileRequester
+}
+
+func newDownloadWriter(d *Download) *downloadWriter {
+	metadata := d.metadata()
+	return &downloadWriter{
+		Download:       d,
+		metadataWriter: &metadata,
+		requester:      d,
+	}
 }
 
 // WriteMetadata writes the exercise metadata.
 func (d downloadWriter) WriteMetadata() error {
-	if d.writer == nil {
-		metadata := d.metadata()
-		d.writer = &metadata
-	}
-	return d.writer.Write(d.Destination())
+	return d.metadataWriter.Write(d.Destination())
 }
 
 // WriteSolutionFiles attempts to write each exercise file that is part of the downloaded Solution.
@@ -214,9 +219,6 @@ func (d downloadWriter) WriteMetadata() error {
 func (d downloadWriter) WriteSolutionFiles() error {
 	if d.fromExercise {
 		return errors.New("existing exercise files should not be overwritten")
-	}
-	if d.requester == nil {
-		d.requester = d.Download
 	}
 	for _, filename := range d.Solution.Files {
 		res, err := d.requester.requestFile(filename)
