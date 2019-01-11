@@ -212,6 +212,10 @@ func newDownloadWriter(d *Download) *downloadWriter {
 
 // WriteMetadata writes the exercise metadata.
 func (d downloadWriter) WriteMetadata() error {
+	if d.metadataWriter == nil {
+		metadata := d.download.metadata()
+		d.metadataWriter = &metadata
+	}
 	return d.metadataWriter.Write(d.Destination())
 }
 
@@ -221,6 +225,9 @@ func (d downloadWriter) WriteMetadata() error {
 func (d downloadWriter) WriteSolutionFiles() error {
 	if d.download.fromExercise {
 		return errors.New("existing exercise files should not be overwritten")
+	}
+	if d.requester == nil {
+		d.requester = d.download
 	}
 	for _, filename := range d.download.Solution.Files {
 		res, err := d.requester.requestFile(filename)
