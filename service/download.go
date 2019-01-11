@@ -194,7 +194,7 @@ type fileRequester interface {
 
 // downloadWriter writes contents from Download.
 type downloadWriter struct {
-	*Download
+	download       *Download
 	metadataWriter fileWriter
 	requester      fileRequester
 }
@@ -202,7 +202,7 @@ type downloadWriter struct {
 func newDownloadWriter(d *Download) *downloadWriter {
 	metadata := d.metadata()
 	return &downloadWriter{
-		Download:       d,
+		download:       d,
 		metadataWriter: &metadata,
 		requester:      d,
 	}
@@ -217,10 +217,10 @@ func (d downloadWriter) WriteMetadata() error {
 // An HTTP request is made using each filename and failed responses are swallowed.
 // All successful file responses are written except when 0 Content-Length.
 func (d downloadWriter) WriteSolutionFiles() error {
-	if d.fromExercise {
+	if d.download.fromExercise {
 		return errors.New("existing exercise files should not be overwritten")
 	}
-	for _, filename := range d.Solution.Files {
+	for _, filename := range d.download.Solution.Files {
 		res, err := d.requester.requestFile(filename)
 		if err != nil {
 			return err
@@ -233,7 +233,7 @@ func (d downloadWriter) WriteSolutionFiles() error {
 		// TODO: if there's a collision, interactively resolve (show diff, ask if overwrite).
 		// TODO: handle --force flag to overwrite without asking.
 
-		sanitizedPath := sanitizeLegacyNumericSuffixFilepath(filename, d.exercise().Slug)
+		sanitizedPath := sanitizeLegacyNumericSuffixFilepath(filename, d.download.exercise().Slug)
 		fileWritePath := filepath.Join(d.Destination(), sanitizedPath)
 		if err = os.MkdirAll(filepath.Dir(fileWritePath), os.FileMode(0755)); err != nil {
 			return err
@@ -253,7 +253,7 @@ func (d downloadWriter) WriteSolutionFiles() error {
 
 // Destination is the download destination path.
 func (d *downloadWriter) Destination() string {
-	return d.exercise().MetadataDir()
+	return d.download.exercise().MetadataDir()
 }
 
 // downloadParams is required to create a Download.
