@@ -194,7 +194,9 @@ type fileRequester interface {
 
 // downloadWriter writes contents from Download.
 type downloadWriter struct {
-	download       *Download
+	download *Download
+
+	// test injection
 	metadataWriter fileWriter
 	requester      fileRequester
 }
